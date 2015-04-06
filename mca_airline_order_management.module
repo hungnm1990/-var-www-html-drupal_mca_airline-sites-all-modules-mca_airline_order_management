@@ -1,0 +1,275 @@
+<?php
+
+/**d
+ * Implements hook_menu().
+ */
+function mca_airline_order_management_menu(){
+ $items = array();
+
+ $items['air_order/add'] = array(
+  'title' => 'Add Package Management',
+  'page callback' => 'mca_airline_order_management_add',
+  'access callback' => TRUE,
+  'file' => 'includes/mca_airline_order_management.inc',
+  'type' => MENU_LOCAL_ACTION
+ );
+
+ $items['air_order/%mca_airline_order_management'] = array(
+  'title' => 'Edit Package Management',
+  'page callback' => 'drupal_get_form',
+  'page arguments' => array(
+   'mca_airline_order_management_form',
+   1
+  ),
+  'access callback' => TRUE,
+  'file' => 'includes/mca_airline_order_management.inc',
+  'type' => MENU_LOCAL_ACTION
+ );
+
+ /**
+  * Admin
+  */
+ $items['admin/config/airline_order'] = array(
+  'title' => 'Airline Order Management',
+  'description' => t('Configuration for Airline Order Management'),
+  'page callback' => 'drupal_get_form',
+  'page arguments' => array(
+   'mca_airline_order_management_admin_config'
+  ),
+  'access arguments' => array(
+   'access administration pages'
+  ),
+  'file path' => 'modules/system',
+  'file' => 'system.admin.inc'
+ );
+
+ $items['admin/config/air_service'] = array(
+  'title' => 'Air Service Management',
+  'description' => t('Configuration for Air Service Management'),
+  'page callback' => 'drupal_get_form',
+  'page arguments' => array(
+   'mca_air_service_management_admin_config'
+  ),
+  'access arguments' => array(
+   'access administration pages'
+  ),
+  'file path' => 'modules/system',
+  'file' => 'system.admin.inc'
+ );
+
+ return $items;
+}
+
+/**
+ * Load id
+ */
+function mca_airline_order_management_load($id = NULL){
+ $ids = isset($id)?$id:FALSE;
+ if($ids){
+  return mca_airline_order_management_search($ids);
+ }else{
+  return FALSE;
+ }
+}
+
+/**
+ * Implements hook_theme().
+ */
+function mca_airline_order_management_theme($existing, $type, $theme, $path){
+ return array(
+  'mca_airline_order_management_views_click_row_click' => array(
+   'variables' => array(
+    'meta' => 0
+   ),
+   'template' => 'includes/theme/mca_airline_order_management_views_click_row_click'
+  ),
+  'booking_info_detail' => array(
+   'template' => 'booking-info-detail',
+   'path' => drupal_get_path('module', 'mca_airline_order_management') . '/includes/theme',
+   'arguments' => array()
+  )
+ );
+}
+
+/**
+ * hook_views_post_render()
+ */
+function mca_airline_order_management_views_post_render(&$view, &$output, &$cache){
+ $output .= theme('mca_airline_order_management_views_click_row_click', array());
+}
+
+/**
+ * hook_views_api()
+ */
+function mca_airline_order_management_views_api(){
+ return array(
+  'api' => 3,
+  'path' => drupal_get_path('module', 'mca_airline_order_management') . '/includes/views'
+ );
+}
+/*
+ * air service config form
+ */
+function mca_air_service_management_admin_config($form, &$form_state){
+
+ $form['mca_air_service_management_rest'] = array(
+  '#type' => 'textfield',
+  '#title' => 'REST URL',
+  '#required' => TRUE,
+  '#description' => 'URL where order REST is deployed (including trailing slash)',
+  '#default_value' => variable_get('mca_air_service_management_rest')
+ );
+
+ $form['mca_air_service_management_timeout'] = array(
+  '#type' => 'textfield',
+  '#title' => 'Connection Timeout',
+  '#required' => TRUE,
+  '#description' => 'Timeout in seconds for the connection to the REST service',
+  '#default_value' => variable_get('mca_air_service_management_timeout')
+ );
+
+ $form['actions']['submit'] = array(
+  '#type' => 'submit',
+  '#value' => t('Save configuration'),
+  '#submit' => array(
+   'system_settings_form_submit'
+  )
+ );
+
+ $form['submit'] = array(
+  '#type' => 'submit',
+  '#value' => t('Test Connection'),
+  '#submit' => array(
+   'mca_air_service_management_test_connection'
+  )
+ );
+
+ return $form;
+
+}
+
+function mca_air_service_management_test_connection($form, &$form_state){
+ $url = $form_state['values']['mca_air_service_management_rest'];
+ $timeout = $form_state['values']['mca_air_service_management_timeout'];
+
+ $test_url = $url . "test";
+
+ $headers = array(
+  'Content-Type' => 'application/json'
+ );
+
+ $options = array(
+  'method' => 'GET',
+  'data' => NULL,
+  'headers' => $headers,
+  'timeout' => (int)$timeout
+ );
+
+ $response = drupal_http_request($test_url, $options);
+
+ if($response->code == 200 && $response->status_message == "OK"){
+  drupal_set_message("Connect success " . $response->data);
+ }else{
+  drupal_set_message("Connection fail " . drupal_html_to_text(isset($response->data)?$response->data:''), "warning");
+ }
+
+ $form_state['rebuild'] = TRUE;
+}
+
+
+/*
+ * airline order management config form
+ */
+function mca_airline_order_management_admin_config($form, &$form_state){
+ $form['mca_airline_order_management_rest'] = array(
+  '#type' => 'textfield',
+  '#title' => 'REST URL',
+  '#required' => TRUE,
+  '#description' => 'URL where order REST is deployed (including trailing slash)',
+  '#default_value' => variable_get('mca_airline_order_management_rest')
+ );
+
+ $form['mca_airline_order_management_timeout'] = array(
+  '#type' => 'textfield',
+  '#title' => 'Connection Timeout',
+  '#required' => TRUE,
+  '#description' => 'Timeout in seconds for the connection to the REST service',
+  '#default_value' => variable_get('mca_airline_order_management_timeout')
+ );
+
+ $form['actions']['submit'] = array(
+  '#type' => 'submit',
+  '#value' => t('Save configuration'),
+  '#submit' => array(
+   'system_settings_form_submit'
+  )
+ );
+
+ $form['submit'] = array(
+  '#type' => 'submit',
+  '#value' => t('Test Connection'),
+  '#submit' => array(
+   'mca_airline_order_management_test_connection'
+  )
+ );
+
+ return $form;
+}
+
+function mca_airline_order_management_test_connection($form, &$form_state){
+ $url = $form_state['values']['mca_airline_order_management_rest'];
+ $timeout = $form_state['values']['mca_airline_order_management_timeout'];
+
+ $test_url = $url . "hello";
+
+ $headers = array(
+  'Content-Type' => 'application/json'
+ );
+
+ $options = array(
+  'method' => 'GET',
+  'data' => NULL,
+  'headers' => $headers,
+  'timeout' => (int)$timeout
+ );
+
+ $response = drupal_http_request($test_url, $options);
+
+ if($response->code == 200 && $response->status_message == "OK"){
+  drupal_set_message("Connect success " . $response->data);
+ }else{
+  drupal_set_message("Connection fail " . drupal_html_to_text(isset($response->data)?$response->data:''), "warning");
+ }
+
+ $form_state['rebuild'] = TRUE;
+}
+
+/*
+ * REST SERVICE
+ */
+function mca_airline_order_management_search($id = NULL){
+ $url = variable_get("mca_airline_order_management_rest") . "search.json";
+
+ $data = array(
+  'order_id' => $id,
+//   'meta' => array(
+//    'channel' => 'AIR'
+//   )
+ );
+
+ $options = array(
+  'method' => 'POST',
+  'data' => json_encode($data),
+  'headers' => array(
+   'Content-Type' => 'application/json'
+  )
+ );
+
+ $response = drupal_http_request($url, $options);
+ if($response){
+  if($response->code == 200){
+   return $response->data;
+  }
+ }
+ return FALSE;
+}

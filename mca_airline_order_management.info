@@ -1,0 +1,11 @@
+name = MCA Airline Order Management
+description = MCA Airline Order Management
+package = MCA
+
+core = 7.x
+
+; Information added
+version = '7.x-0.1-01'
+scripts[] = includes/theme/js/alert.js
+
+files[] = includes/views/plugins/mca_airline_order_management_views_plugin.inc
